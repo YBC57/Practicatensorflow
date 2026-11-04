@@ -1,33 +1,57 @@
 
 let net;
 let webcam;
-let ultimaPrediccion = null;
-let palabra = "";
 
-const clases = ["A", "B", "C"];
-
-const webCam = document.getElementById("webcam");
 const classifier = knnClassifier.create();
 
+const imgE1 = document.getElementById("img");
+const descE1 = document.getElementById("descripcion_imagen");
+const webCam = document.getElementById("webcam");
+
+// Letras que podrá reconocer el clasificador.
+// El último índice se reserva para reconocer que no hay una seña.
+const clases = [
+    "A", "B", "C", "D", "E", "F", "G",
+    "H", "I", "J", "K", "L", "M", "N",
+    "Ñ", "O", "P", "Q", "R", "S", "T",
+    "U", "V", "W", "X", "Y", "Z",
+    "SIN_SEÑA"
+];
+
+// Variables para controlar la estabilidad
+let letraCandidata = null;
+let contadorEstabilidad = 0;
+let ultimaLetraAgregada = null;
+
+let palabraFormada = "";
+
+const FRAMES_NECESARIOS = 8;
+const CONFIANZA_MINIMA = 0.75;
+
+// Iniciar aplicación
 async function app() {
     try {
-        document.getElementById("estado").textContent =
-            "Cargando MobileNet...";
+        document.getElementById("estadoReconocimiento").textContent =
+            "Cargando modelo...";
 
+        // Cargar MobileNet
         net = await mobilenet.load();
 
-        document.getElementById("estado").textContent =
-            "Activando cámara...";
+        // Clasificar imagen estática
+        await displayImagePrediction();
 
+        // Inicializar cámara
         webcam = await tf.data.webcam(webCam);
 
-        document.getElementById("estado").textContent =
-            "Cámara lista. Agrega ejemplos para entrenar.";
+        document.getElementById("estadoReconocimiento").textContent =
+            "Cámara lista. Esperando una seña...";
 
+        // Iniciar reconocimiento continuo
         while (true) {
             const img = await webcam.capture();
 
             try {
+                // Predicción MobileNet
                 const result = await net.classify(img);
 
                 document.getElementById("console").innerHTML =
@@ -36,109 +60,144 @@ async function app() {
                     "<br><strong>Probabilidad:</strong> " +
                     (result[0].probability * 100).toFixed(2) + "%";
 
-                if (classifier.getNumClasses() > 0) {
-                    const activation = net.infer(img, true);
+                // Verificar si existen ejemplos entrenados
+                if (classifier.getNumClasses() === 0) {
+                    document.getElementById("letraActual").textContent =
+                        "El clasificador todavía no tiene ejemplos entrenados.";
 
-                    try {
-                        const prediction =
-                            await classifier.predictClass(activation);
+                    document.getElementById("estadoReconocimiento").textContent =
+                        "Falta preparar el entrenamiento de las señas.";
 
-                        const letra = clases[
-                            Number(prediction.label)
-                        ];
-
-                        const confianza =
-                            prediction.confidences[prediction.label] || 0;
-
-                        ultimaPrediccion = {
-                            letra: letra,
-                            confianza: confianza
-                        };
-
-                        document.getElementById("console2").innerHTML =
-                            "<strong>Seña:</strong> " + letra +
-                            "<br><strong>Confianza:</strong> " +
-                            (confianza * 100).toFixed(2) + "%";
-
-                    } finally {
-                        activation.dispose();
-                    }
-                } else {
-                    document.getElementById("console2").textContent =
-                        "Agrega ejemplos de las señas A, B y C.";
+                    await tf.nextFrame();
+                    continue;
                 }
+
+                // Extraer características de la imagen
+                const activation = net.infer(img, true);
+
+                try {
+                    // Clasificación personalizada
+                    const prediction =
+                        await classifier.predictClass(activation);
+
+                    const indice = Number(prediction.label);
+                    const letra = clases[indice];
+                    const confianza = prediction.confidences[indice] || 0;
+
+                    reconocerLetra(letra, confianza);
+
+                } finally {
+                    activation.dispose();
+                }
+
             } finally {
                 img.dispose();
             }
 
             await tf.nextFrame();
         }
+
     } catch (error) {
         console.error("Error general:", error);
 
-        document.getElementById("estado").textContent =
-            "Error: " + error.message;
+        document.getElementById("estadoReconocimiento").textContent =
+            "Error al iniciar. Revisa los permisos de la cámara y la consola.";
     }
 }
 
-async function addExample(classId) {
-    if (!net || !webcam) {
-        document.getElementById("estado").textContent =
-            "Espera a que el modelo y la cámara estén listos.";
+// Comprobar que la predicción sea estable
+function reconocerLetra(letra, confianza) {
+
+    if (confianza < CONFIANZA_MINIMA) {
+        letraCandidata = null;
+        contadorEstabilidad = 0;
+
+        document.getElementById("letraActual").textContent =
+            "Seña no identificada con suficiente confianza.";
+
         return;
     }
 
-    const img = await webcam.capture();
+    // Si no hay una seña, permitir reconocer nuevamente
+    if (letra === "SIN_SEÑA") {
+        letraCandidata = null;
+        contadorEstabilidad = 0;
+        ultimaLetraAgregada = null;
 
+        document.getElementById("letraActual").textContent =
+            "Esperando una seña...";
+
+        return;
+    }
+
+    // Contar las predicciones consecutivas de la misma letra
+    if (letra === letraCandidata) {
+        contadorEstabilidad++;
+    } else {
+        letraCandidata = letra;
+        contadorEstabilidad = 1;
+    }
+
+    document.getElementById("letraActual").textContent =
+        "Detectando: " + letra +
+        " (" + contadorEstabilidad + "/" + FRAMES_NECESARIOS + ")";
+
+    // Confirmar cuando la predicción sea estable
+    if (
+        contadorEstabilidad >= FRAMES_NECESARIOS &&
+        letra !== ultimaLetraAgregada
+    ) {
+        agregarLetra(letra);
+        ultimaLetraAgregada = letra;
+    }
+}
+
+// Agregar letra a la palabra
+function agregarLetra(letra) {
+    palabraFormada += letra;
+
+    document.getElementById("palabra").textContent =
+        palabraFormada;
+
+    document.getElementById("letraActual").textContent =
+        "Letra reconocida: " + letra;
+}
+
+// Borrar palabra
+function borrarPalabra() {
+    palabraFormada = "";
+
+    document.getElementById("palabra").textContent = "_";
+    document.getElementById("letraActual").textContent =
+        "Esperando una seña...";
+
+    ultimaLetraAgregada = null;
+    letraCandidata = null;
+    contadorEstabilidad = 0;
+}
+
+// Clasificar imagen estática
+async function displayImagePrediction() {
     try {
-        const activation = net.infer(img, true);
+        const result = await net.classify(imgE1);
 
-        try {
-            classifier.addExample(activation, classId);
-        } finally {
-            activation.dispose();
-        }
-    } finally {
-        img.dispose();
+        descE1.innerHTML =
+            "<pre>" + JSON.stringify(result, null, 2) + "</pre>";
+
+    } catch (error) {
+        console.error("Error al clasificar imagen:", error);
     }
-
-    actualizarEjemplos();
 }
 
-function actualizarEjemplos() {
-    const contenedor = document.getElementById("ejemplos");
+// Cambiar imagen
+let count = 0;
 
-    contenedor.innerHTML = clases.map((letra, id) => {
-        const cantidad = classifier.getClassExampleCount(id);
+function cambiarImagen() {
+    count++;
 
-        return `<p>Seña ${letra}: ${cantidad} ejemplos</p>`;
-    }).join("");
+    imgE1.crossOrigin = "anonymous";
+    imgE1.src = "https://picsum.photos/200/300?random=" + count;
 }
 
-function agregarLetra() {
-    if (!ultimaPrediccion) {
-        alert("Primero debes entrenar el clasificador.");
-        return;
-    }
-
-    if (ultimaPrediccion.confianza < 0.7) {
-        alert("La confianza es baja. Intenta mostrar mejor la seña.");
-        return;
-    }
-
-    palabra += ultimaPrediccion.letra;
-
-    document.getElementById("palabra").textContent = palabra;
-}
-
-function borrarUltima() {
-    palabra = palabra.slice(0, -1);
-    document.getElementById("palabra").textContent = palabra;
-}
-
-function limpiarPalabra() {
-    palabra = "";
-    document.getElementById("palabra").textContent = "";
-}
-
+// Ejecutar aplicación
 app();

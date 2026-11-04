@@ -9,42 +9,69 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
 
-    <title>Clasificador de Señas</title>
+    <title>Reconocimiento de señas LSM</title>
 </head>
+
 <body>
-    <h1>Clasificador de Señas</h1>
 
-    <p id="estado">Cargando modelo...</p>
+    <h2>Imagen Estática</h2>
 
-    <h2>Cámara web</h2>
-    <video autoplay playsinline muted
-           width="320" height="240" id="webcam"></video>
+    <img
+        crossOrigin="anonymous"
+        src="https://picsum.photos/200/300?random=0"
+        width="227"
+        height="227"
+        id="img"
+    >
 
-    <h2>Predicción MobileNet</h2>
+    <br>
+
+    <button onclick="cambiarImagen();">
+        Cambiar imagen
+    </button>
+
+    <div id="descripcion_imagen"></div>
+
+    <br>
+    <hr>
+    <br>
+
+    <h2>Cámara Web y Reconocimiento de Señas</h2>
+
+    <video
+        autoplay
+        playsinline
+        muted
+        width="227"
+        height="227"
+        id="webcam"
+    ></video>
+
+    <p id="estadoReconocimiento">
+        Cargando modelo...
+    </p>
+
+    <h3>Predicción MobileNet</h3>
     <div id="console"></div>
 
-    <h2>Reconocimiento de señas</h2>
-    <div id="console2">Esperando ejemplos...</div>
-
-    <h3>Entrenar clasificador</h3>
-    <p>Coloca tu mano frente a la cámara y captura varios ejemplos de cada seña.</p>
-
-    <button onclick="addExample(0)">Guardar seña A</button>
-    <button onclick="addExample(1)">Guardar seña B</button>
-    <button onclick="addExample(2)">Guardar seña C</button>
-
-    <div id="ejemplos"></div>
-
-    <h3>Formar una palabra</h3>
-    <div>
-        <strong>Palabra:</strong>
-        <span id="palabra"></span>
+    <h3>Letra reconocida automáticamente</h3>
+    <div id="letraActual">
+        Esperando una seña...
     </div>
 
-    <button onclick="agregarLetra()">Agregar letra reconocida</button>
-    <button onclick="borrarUltima()">Borrar última letra</button>
-    <button onclick="limpiarPalabra()">Limpiar palabra</button>
+    <hr>
+
+    <h2>Palabra formada</h2>
+
+    <h1 id="palabra">
+        _
+    </h1>
+
+    <button onclick="borrarPalabra();">
+        Borrar palabra
+    </button>
 
     <script src="js/scripts.js"></script>
+
 </body>
 </html>
