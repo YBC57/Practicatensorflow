@@ -1,52 +1,77 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+    <title>TensorFlow - Alfabeto manual</title>
+</head>
+<body>
+    <h2>Imagen estática</h2>
+    <img crossOrigin="anonymous"
+        src="https://picsum.photos/200/300?random=0"
+        width="227" height="227" id="img"
+        alt="Imagen de ejemplo para MobileNet">
+    <br>
+    <button onclick="cambiarImagen();">Cambiar imagen</button>
+    <div id="descripcion_imagen"></div>
 
+    <br><hr><br>
 
-
-    <h2>Cámara Web y Reconocimiento de Señas</h2>
-
-    <video
-        autoplay
-        playsinline
-        muted
-        width="227"
-        height="227"
-        id="webcam"
-    ></video>
-
-    <p id="estadoReconocimiento">
-        Cargando modelo...
-    </p>
+    <h2>Cámara web y clasificador KNN</h2>
+    <video autoplay playsinline muted width="227" height="227" id="webcam"></video>
+    <p id="estadoReconocimiento">Cargando modelo...</p>
 
     <h3>Predicción MobileNet</h3>
     <div id="console"></div>
 
-    <h3>Letra reconocida automáticamente</h3>
-    <div id="letraActual">
-        Esperando una seña...
-    </div>
+    <h3>Predicción personalizada (KNN)</h3>
+    <div id="console2">Agrega ejemplos para entrenar el clasificador.</div>
+
+    <h3>Letra reconocida</h3>
+    <div id="letraActual">Enseña ejemplos para comenzar.</div>
+
+    <br>
+    <h3>Enseñar el alfabeto manual americano (ASL)</h3>
+    <p>
+        Pulsa una letra para guardar el fotograma actual como ejemplo.
+        Captura varias muestras por letra, con ligeros cambios de posición
+        e iluminación. Enseña al menos dos clases; incluye SIN_SEÑA con la
+        mano fuera del encuadre. Los ejemplos se guardan en este navegador.
+        El alfabeto ASL es distinto de la LSM. Las letras J y Z requieren
+        movimiento; esta aplicación clasifica imágenes estáticas.
+    </p>
+    <div id="alfabeto"></div>
+    <br>
+    <button id="capturarSinSena" onclick="addExample(26);" disabled>
+        Capturar ejemplo: sin seña (0)
+    </button>
+    <button onclick="exportarModelo();">Exportar conocimiento (.json)</button>
+    <input type="file" id="importarArchivo" accept=".json" onchange="importarModelo(event);">
+    <button onclick="reiniciarConocimiento();">Reiniciar entrenamiento</button>
+
+    <p id="pistaLetra"></p>
+    <p id="estadoEntrenamiento">Cargando modelo y cámara...</p>
+    <p>Letras enseñadas: <span id="contadorClases">0 / 26</span></p>
 
     <hr>
-
     <h2>Palabra formada</h2>
+    <p id="palabra">Empieza a deletrear…</p>
+    <button onclick="hablarPalabra();">Escuchar palabra</button>
+    <button onclick="agregarEspacio();">Agregar espacio</button>
+    <button onclick="borrarUltimaLetra();">Borrar última letra</button>
+    <button onclick="borrarPalabra();">Borrar palabra</button>
+    <button onclick="guardarPalabra();">Guardar palabra</button>
 
-    <h1 id="palabra">
-        _
-    </h1>
-
-    <button onclick="borrarPalabra();">
-        Borrar palabra
+    <h2>Palabras guardadas</h2>
+    <p id="mensajePalabras">Aquí aparecerán las palabras que guardes.</p>
+    <ul id="listaPalabras"></ul>
+    <button id="limpiarPalabras" onclick="limpiarPalabrasGuardadas();" hidden>
+        Borrar todas las palabras
     </button>
 
-    <script src="js/scripts.js"></script>
-
+    <script src="scripts.js"></script>
 </body>
 </html>
